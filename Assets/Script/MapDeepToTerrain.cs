@@ -1,9 +1,8 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using System;
 using System.IO;
 using System.Linq;
+using System.Collections.Generic;
 
 public class MapDeepToTerrain : MonoBehaviour {
     private int HEIGHT_KINECT = 240;
@@ -112,9 +111,17 @@ public class MapDeepToTerrain : MonoBehaviour {
         }
         countFrameMapHeight = (countFrameMapHeight + 1) % SKIP_FRAMES_MAPHEIGHT;
 
+        //WriteTerrainHeightMap(tData);
+        //if (checkToWriteFile)
+        //{
+        //    checkToWriteFile = false;
+        //    guestThresholdMapColor(tData);
+        //}
+
         if (countFrameMapColor == 0)
         {
-            mapColor(tData);
+            KeyValuePair<int, int> threshold = guestThresholdMapColor(tData);
+            mapColor(tData, threshold);
         }
         countFrameMapColor = (countFrameMapColor + 1) % SKIP_FRAMES_MAPCOLOR;
     }
@@ -123,7 +130,7 @@ public class MapDeepToTerrain : MonoBehaviour {
     {
         // Splatmap data is stored internally as a 3d array of floats, so declare a new empty array ready for your custom splatmap data:
         float[,,] splatmapData = new float[terrainData.alphamapWidth, terrainData.alphamapHeight, terrainData.alphamapLayers];
-
+     
         for (int y = 0; y < terrainData.alphamapHeight; y++)
         {
             for (int x = 0; x < terrainData.alphamapWidth; x++)
@@ -180,6 +187,87 @@ public class MapDeepToTerrain : MonoBehaviour {
         terrainData.SetAlphamaps(0, 0, splatmapData);
     }
 
+    private void mapColor(TerrainData terrainData, KeyValuePair<int, int> threshold)
+    {
+        int diffThreshold = threshold.Value - threshold.Key;
+        Debug.Log("min: " + threshold.Key + "max: " + threshold.Value);
+        
+        float[,,] splatmapData = new float[terrainData.alphamapWidth, terrainData.alphamapHeight, terrainData.alphamapLayers];
+
+        for (int y = 0; y < terrainData.alphamapHeight; y++)
+        {
+            for (int x = 0; x < terrainData.alphamapWidth; x++)
+            {
+                // Normalise x/y coordinates to range 0-1 
+                float y_01 = (float)y / (float)terrainData.alphamapHeight;
+                float x_01 = (float)x / (float)terrainData.alphamapWidth;
+
+                float height = terrainData.GetHeight(y, x);
+             
+                // Setup an array to record the mix of texture weights at this point
+                float[] splatWeights = new float[terrainData.alphamapLayers];
+
+                if (height < diffThreshold / 5)
+                {
+                    splatWeights[0] = 1.0f;
+                    splatWeights[1] = 0.0f;
+                    splatWeights[2] = 0.0f;
+                    splatWeights[3] = 0.0f;
+                    splatWeights[4] = 0.0f;
+                }
+                if (diffThreshold / 5 <height && height < 2 * diffThreshold / 5)
+                {
+                    splatWeights[0] = 0.0f;
+                    splatWeights[1] = 1.0f;
+                    splatWeights[2] = 0.0f;
+                    splatWeights[3] = 0.0f;
+                    splatWeights[4] = 0.0f;
+                }
+                if (2 * diffThreshold / 5 < height && height < 3 * diffThreshold / 5)
+                {
+                    splatWeights[0] = 0.0f;
+                    splatWeights[1] = 0.0f;
+                    splatWeights[2] = 1.0f;
+                    splatWeights[3] = 0.0f;
+                    splatWeights[4] = 0.0f;
+                }
+                if (3 * diffThreshold / 5 < height && height < 4 * diffThreshold / 5)
+                {
+                    splatWeights[0] = 0.0f;
+                    splatWeights[1] = 0.0f;
+                    splatWeights[2] = 0.0f;
+                    splatWeights[3] = 1.0f;
+                    splatWeights[4] = 0.0f;
+                }
+                if (4*diffThreshold / 5 < height)
+                {
+                    splatWeights[0] = 0.0f;
+                    splatWeights[1] = 0.0f;
+                    splatWeights[2] = 0.0f;
+                    splatWeights[3] = 0.0f;
+                    splatWeights[4] = 1.0f;
+                }
+
+                // Sum of all textures weights must add to 1, so calculate normalization factor from sum of weights
+                float z = splatWeights.Sum();
+
+                // Loop through each terrain texture
+                for (int i = 0; i < terrainData.alphamapLayers; i++)
+                {
+
+                    // Normalize so that sum of all texture weights = 1
+                    splatWeights[i] /= z;
+
+                    // Assign this point to the splatmap array
+                    splatmapData[x, y, i] = splatWeights[i];
+                }
+            }
+        }
+
+        // Finally assign the new splatmap to the terrainData:
+        terrainData.SetAlphamaps(0, 0, splatmapData);
+    }
+
     void WriteTerrainHeightMap(TerrainData terrainData)
     {
         if (checkToWriteFile)
@@ -198,17 +286,52 @@ public class MapDeepToTerrain : MonoBehaviour {
                     }
                     sw.WriteLine();
                 }
-
-
                 sw.Close();
             }
-
         }
     }
 
-    private void guestThreshodMapColor ()
+    private KeyValuePair<int, int> guestThresholdMapColor (TerrainData tData)
     {
-       
+        int [] mappingVal = new int[100];
+        int min = 0, max = 0;
+
+        for (int i = 0; i < tData.heightmapHeight; i++)
+        {
+            for (int j = 0; j < tData.heightmapWidth; j++)
+            {
+                float tmp = tData.GetHeight(i, j);
+                mappingVal[(int)tmp]++;
+            }
+        }
+
+        for(int i = 1; i < 100; i++)
+        {
+            if (mappingVal[i] != 0)
+            {
+                min = i;
+                break;
+            }
+        }
+        for (int i = 99; i> 0; i--)
+        {
+            if (mappingVal[i] != 0)
+            {
+                max = i;
+                break;
+            }
+        }
+        //using (FileStream fs = new FileStream("a.txt", FileMode.CreateNew, FileAccess.Write))
+        //using (StreamWriter sw = new StreamWriter(fs))
+        //{
+
+        //    for (int i = 0; i < mappingVal.Length; i++)
+        //    {
+        //            sw.WriteLine(i + "   " + mappingVal[i]);   
+        //    }
+        //    sw.Close();
+        //}
+        return new KeyValuePair<int, int>(min, max) ;
     }
 
 }
