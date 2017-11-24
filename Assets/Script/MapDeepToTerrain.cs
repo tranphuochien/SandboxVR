@@ -6,15 +6,25 @@ using System.IO;
 using System.Linq;
 
 public class MapDeepToTerrain : MonoBehaviour {
+    static int HEIGHT_TERRAIN = 240;
+    static int WIDTH_TERRAIN = 320;
+    readonly int SKIP_FRAMES_MIN_MAX = 30;
+    readonly int SKIP_FRAMES_MAPCOLOR = 10;
+    readonly int SKIP_FRAMES_MAPHEIGHT = 5;
+    readonly float NORMALIZE_RAW_DATA = 6000.0f;
 
+    float[,] data = new float[HEIGHT_TERRAIN, WIDTH_TERRAIN];
     short[] DepthImage;
+
     public DepthWrapper KinectDepth;
     public int maxHeightMap = 100;
     public float heightOffset = 0.03f;
     private bool checkToWriteFile = true;
-    static int HEIGHT_TERRAIN = 240;
-    static int WIDTH_TERRAIN = 320;
-    float[,] data = new float[HEIGHT_TERRAIN, WIDTH_TERRAIN];
+    int countFrameMinMax = 0;
+    int countFrameMapColor = 0;
+    int countFrameMapHeight = 0;
+    private float maxVal = 0;
+    private float minVal = 0;
 
     // Use this for initialization
     void Start() {
@@ -74,23 +84,35 @@ public class MapDeepToTerrain : MonoBehaviour {
     void loadDeep(TerrainData tData, short[] rawData)
     {
         int i = rawData.Length - 1;
-        float maxVal = (float) rawData.Max() / 6000;
-        float minVal = (float)rawData.Min() / 6000;
-
-        for (int y = 0; y < HEIGHT_TERRAIN; y++)
+        if (countFrameMinMax == 0)
         {
-            for (int x = 0; x < WIDTH_TERRAIN; x++)
-            {
-                //flatten background
-                data[y, x] = (rawData[i] >= minVal && rawData[i] <= minVal + heightOffset ) ? minVal : maxVal - (float)rawData[i] / 6000;
-                //data[y, x] = (y + x) / 6000.0f;
-                i--;
-            }
+            maxVal = (float)rawData.Max() / NORMALIZE_RAW_DATA;
+            minVal = (float)rawData.Min() / NORMALIZE_RAW_DATA;
         }
-        tData.size = new Vector3(WIDTH_TERRAIN, maxHeightMap, HEIGHT_TERRAIN);
-        tData.SetHeights(0, 0, data);
+        countFrameMinMax =  (countFrameMinMax + 1) % SKIP_FRAMES_MIN_MAX;
 
-        mapColor(tData);
+        if (countFrameMapHeight == 0)
+        {
+            for (int y = 0; y < HEIGHT_TERRAIN; y++)
+            {
+                for (int x = 0; x < WIDTH_TERRAIN; x++)
+                {
+                    //flatten background
+                    data[y, x] = (rawData[i] >= minVal && rawData[i] <= minVal + heightOffset) ? minVal : maxVal - (float)rawData[i] / NORMALIZE_RAW_DATA;
+                    //data[y, x] = (y + x) / 6000.0f;
+                    i--;
+                }
+            }
+            tData.size = new Vector3(WIDTH_TERRAIN, maxHeightMap, HEIGHT_TERRAIN);
+            tData.SetHeights(0, 0, data);
+        }
+        countFrameMapHeight = (countFrameMapHeight + 1) % SKIP_FRAMES_MAPHEIGHT;
+
+        if (countFrameMapColor == 0)
+        {
+            mapColor(tData);
+        }
+        countFrameMapColor = (countFrameMapColor + 1) % SKIP_FRAMES_MAPCOLOR;
     }
 	
 	private void mapColor(TerrainData terrainData)
