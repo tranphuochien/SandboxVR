@@ -6,28 +6,31 @@ using System.IO;
 using System.Linq;
 
 public class MapDeepToTerrain : MonoBehaviour {
-    static int HEIGHT_TERRAIN = 240;
-    static int WIDTH_TERRAIN = 320;
+    private int HEIGHT_KINECT = 240;
+    private int WIDTH_KINECT = 320;
+    static int MIN_DIMEN = 240;
     readonly int SKIP_FRAMES_MIN_MAX = 30;
     readonly int SKIP_FRAMES_MAPCOLOR = 10;
     readonly int SKIP_FRAMES_MAPHEIGHT = 5;
     readonly float NORMALIZE_RAW_DATA = 6000.0f;
 
-    float[,] data = new float[HEIGHT_TERRAIN, WIDTH_TERRAIN];
+    float[,] data; 
     short[] DepthImage;
 
     public DepthWrapper KinectDepth;
     public int maxHeightMap = 100;
     public float heightOffset = 0.03f;
     private bool checkToWriteFile = true;
-    int countFrameMinMax = 0;
-    int countFrameMapColor = 0;
-    int countFrameMapHeight = 0;
+    private int countFrameMinMax = 0;
+    private int countFrameMapColor = 0;
+    private int countFrameMapHeight = 0;
     private float maxVal = 0;
     private float minVal = 0;
 
     // Use this for initialization
     void Start() {
+        MIN_DIMEN = Math.Min(HEIGHT_KINECT, WIDTH_KINECT);
+        data = new float[MIN_DIMEN, MIN_DIMEN];
     }
 
     // Update is called once per frame
@@ -41,7 +44,7 @@ public class MapDeepToTerrain : MonoBehaviour {
         
             loadDeep(GetComponent<Terrain>().terrainData, DepthImage);
 
-            //WriteToFile();
+            //WriteTerrainHeightMap();
         }
     }
 
@@ -93,17 +96,18 @@ public class MapDeepToTerrain : MonoBehaviour {
 
         if (countFrameMapHeight == 0)
         {
-            for (int y = 0; y < HEIGHT_TERRAIN; y++)
+            for (int y = 0; y < MIN_DIMEN; y++)
             {
-                for (int x = 0; x < WIDTH_TERRAIN; x++)
+                for (int x = 0; x < MIN_DIMEN; x++)
                 {
                     //flatten background
                     data[y, x] = (rawData[i] >= minVal && rawData[i] <= minVal + heightOffset) ? minVal : maxVal - (float)rawData[i] / NORMALIZE_RAW_DATA;
                     //data[y, x] = (y + x) / 6000.0f;
                     i--;
                 }
+                i = i - 80;
             }
-            tData.size = new Vector3(WIDTH_TERRAIN, maxHeightMap, HEIGHT_TERRAIN);
+            tData.size = new Vector3(MIN_DIMEN, maxHeightMap, MIN_DIMEN);
             tData.SetHeights(0, 0, data);
         }
         countFrameMapHeight = (countFrameMapHeight + 1) % SKIP_FRAMES_MAPHEIGHT;
@@ -200,6 +204,11 @@ public class MapDeepToTerrain : MonoBehaviour {
             }
 
         }
+    }
+
+    private void guestThreshodMapColor ()
+    {
+       
     }
 
 }
