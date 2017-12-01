@@ -27,16 +27,30 @@ public class MapDeepToTerrain : MonoBehaviour {
     private float maxVal = 0;
     private float minVal = 0;
     private static int currentMax = 0;
+    private GameObject mRain;
+    private GameObject mWater;
+    private double mMinYPosWater = -5;
 
     // Use this for initialization
     void Start() {
         MIN_DIMEN = Math.Min(HEIGHT_KINECT, WIDTH_KINECT);
         data = new float[MIN_DIMEN, MIN_DIMEN];
+        mRain = this.gameObject.transform.GetChild(0).gameObject;
+        mWater = this.gameObject.transform.GetChild(1).gameObject;
     }
 
     // Update is called once per frame
     void Update()
     {
+        //mWater.transform.Translate(Vector3.up);
+
+        /*if (mWater.transform.position.y > -5)
+        {
+            mWater.transform.Translate(-Vector3.up);
+        }*/
+
+
+
         if (KinectDepth.pollDepth())
         {
             DepthImage = KinectDepth.depthImg;
@@ -192,13 +206,17 @@ public class MapDeepToTerrain : MonoBehaviour {
 
     private void mapColor(TerrainData terrainData, KeyValuePair<int, int> threshold)
     {
-        int diffThreshold;
+        int diffThreshold = threshold.Value - threshold.Key;
 
         if (currentMax != 0)
         {
             if (threshold.Value - currentMax <= epsilon)
             {
                 currentMax = threshold.Value;
+                mRain.SetActive(false);
+            } else
+            {
+                mRain.SetActive(true);
             }
             diffThreshold = currentMax - threshold.Key;
         } else
@@ -225,16 +243,16 @@ public class MapDeepToTerrain : MonoBehaviour {
 
                 if (height < diffThreshold / 5)
                 {
-                    splatWeights[0] = 0.0f;
+                    splatWeights[0] = 1.0f;
                     splatWeights[1] = 0.0f;
-                    splatWeights[2] = 1.0f;
+                    splatWeights[2] = 0.0f;
                     splatWeights[3] = 0.0f;
                     splatWeights[4] = 0.0f;
                 }
                 if (diffThreshold / 5 <height && height < 2 * diffThreshold / 5)
                 {
-                    splatWeights[0] = 1.0f;
-                    splatWeights[1] = 0.0f;
+                    splatWeights[0] = 0.0f;
+                    splatWeights[1] = 1.0f;
                     splatWeights[2] = 0.0f;
                     splatWeights[3] = 0.0f;
                     splatWeights[4] = 0.0f;
@@ -242,8 +260,8 @@ public class MapDeepToTerrain : MonoBehaviour {
                 if (2 * diffThreshold / 5 < height && height < 3 * diffThreshold / 5)
                 {
                     splatWeights[0] = 0.0f;
-                    splatWeights[1] = 1.0f;
-                    splatWeights[2] = 0.0f;
+                    splatWeights[1] = 0.0f;
+                    splatWeights[2] = 1.0f;
                     splatWeights[3] = 0.0f;
                     splatWeights[4] = 0.0f;
                 }
