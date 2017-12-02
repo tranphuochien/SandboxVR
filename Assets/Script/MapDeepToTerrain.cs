@@ -29,7 +29,11 @@ public class MapDeepToTerrain : MonoBehaviour {
     private static int currentMax = 0;
     private GameObject mRain;
     private GameObject mWater;
-    private double mMinYPosWater = -5;
+    private float mMinYPosWater = -5f;
+    private float mMaxYPosWater = 20f;
+    private static bool isRaining;
+    private const int DRAINAGE_INTERVAL = 20;
+    private static int mDrainageCount = 0;
 
     // Use this for initialization
     void Start() {
@@ -48,6 +52,24 @@ public class MapDeepToTerrain : MonoBehaviour {
         {
             mWater.transform.Translate(-Vector3.up);
         }*/
+
+        mDrainageCount = ++mDrainageCount % DRAINAGE_INTERVAL;
+        float currentWaterY = mWater.transform.position.y;
+
+        if (isRaining && currentWaterY < mMaxYPosWater)
+        {
+            if (mDrainageCount >= DRAINAGE_INTERVAL - 1)
+            {
+                mWater.transform.Translate(Vector3.up);
+            }
+        }
+        if (!isRaining && currentWaterY > mMinYPosWater)
+        {
+            if (mDrainageCount >= DRAINAGE_INTERVAL - 1)
+            {
+                mWater.transform.Translate(-Vector3.up);
+            }
+        }
 
 
 
@@ -214,9 +236,11 @@ public class MapDeepToTerrain : MonoBehaviour {
             {
                 currentMax = threshold.Value;
                 mRain.SetActive(false);
+                isRaining = false;
             } else
             {
                 mRain.SetActive(true);
+                isRaining = true;
             }
             diffThreshold = currentMax - threshold.Key;
         } else
