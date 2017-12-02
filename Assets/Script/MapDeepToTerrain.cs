@@ -15,6 +15,7 @@ public class MapDeepToTerrain : MonoBehaviour {
 
     float[,] data; 
     short[] DepthImage;
+    private const int epsilon = 2;
 
     public DepthWrapper KinectDepth;
     public int maxHeightMap = 100;
@@ -25,16 +26,53 @@ public class MapDeepToTerrain : MonoBehaviour {
     private int countFrameMapHeight = 0;
     private float maxVal = 0;
     private float minVal = 0;
+    private static int currentMax = 0;
+    private GameObject mRain;
+    private GameObject mWater;
+    private float mMinYPosWater = -5f;
+    private float mMaxYPosWater = 20f;
+    private static bool isRaining;
+    private const int DRAINAGE_INTERVAL = 20;
+    private static int mDrainageCount = 0;
 
     // Use this for initialization
     void Start() {
         MIN_DIMEN = Math.Min(HEIGHT_KINECT, WIDTH_KINECT);
         data = new float[MIN_DIMEN, MIN_DIMEN];
+        mRain = this.gameObject.transform.GetChild(0).gameObject;
+        mWater = this.gameObject.transform.GetChild(1).gameObject;
     }
 
     // Update is called once per frame
     void Update()
     {
+        //mWater.transform.Translate(Vector3.up);
+
+        /*if (mWater.transform.position.y > -5)
+        {
+            mWater.transform.Translate(-Vector3.up);
+        }*/
+
+        mDrainageCount = ++mDrainageCount % DRAINAGE_INTERVAL;
+        float currentWaterY = mWater.transform.position.y;
+
+        if (isRaining && currentWaterY < mMaxYPosWater)
+        {
+            if (mDrainageCount >= DRAINAGE_INTERVAL - 1)
+            {
+                mWater.transform.Translate(Vector3.up);
+            }
+        }
+        if (!isRaining && currentWaterY > mMinYPosWater)
+        {
+            if (mDrainageCount >= DRAINAGE_INTERVAL - 1)
+            {
+                mWater.transform.Translate(-Vector3.up);
+            }
+        }
+
+
+
         if (KinectDepth.pollDepth())
         {
             DepthImage = KinectDepth.depthImg;
@@ -104,6 +142,7 @@ public class MapDeepToTerrain : MonoBehaviour {
                     //data[y, x] = (y + x) / 6000.0f;
                     i--;
                 }
+                // to make terrain square
                 i = i - 80;
             }
             tData.size = new Vector3(MIN_DIMEN, maxHeightMap, MIN_DIMEN);
@@ -190,6 +229,25 @@ public class MapDeepToTerrain : MonoBehaviour {
     private void mapColor(TerrainData terrainData, KeyValuePair<int, int> threshold)
     {
         int diffThreshold = threshold.Value - threshold.Key;
+
+        if (currentMax != 0)
+        {
+            if (threshold.Value - currentMax <= epsilon)
+            {
+                currentMax = threshold.Value;
+                mRain.SetActive(false);
+                isRaining = false;
+            } else
+            {
+                mRain.SetActive(true);
+                isRaining = true;
+            }
+            diffThreshold = currentMax - threshold.Key;
+        } else
+        {
+            diffThreshold = threshold.Value - threshold.Key;
+            currentMax = threshold.Value;
+        }
         Debug.Log("min: " + threshold.Key + "max: " + threshold.Value);
         
         float[,,] splatmapData = new float[terrainData.alphamapWidth, terrainData.alphamapHeight, terrainData.alphamapLayers];
