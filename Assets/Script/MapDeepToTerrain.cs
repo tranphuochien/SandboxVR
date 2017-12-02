@@ -35,6 +35,7 @@ public class MapDeepToTerrain : MonoBehaviour {
     private const int DRAINAGE_INTERVAL = 20;
     private static int mDrainageCount = 0;
 
+
     // Use this for initialization
     void Start() {
         MIN_DIMEN = Math.Min(HEIGHT_KINECT, WIDTH_KINECT);
@@ -228,13 +229,14 @@ public class MapDeepToTerrain : MonoBehaviour {
 
     private void mapColor(TerrainData terrainData, KeyValuePair<int, int> threshold)
     {
-        int diffThreshold = threshold.Value - threshold.Key;
+        int diffThreshold;
 
         if (currentMax != 0)
         {
             if (threshold.Value - currentMax <= epsilon)
             {
                 currentMax = threshold.Value;
+
                 mRain.SetActive(false);
                 isRaining = false;
             } else
@@ -267,16 +269,16 @@ public class MapDeepToTerrain : MonoBehaviour {
 
                 if (height < diffThreshold / 5)
                 {
-                    splatWeights[0] = 1.0f;
+                    splatWeights[0] = 0.0f;
                     splatWeights[1] = 0.0f;
-                    splatWeights[2] = 0.0f;
+                    splatWeights[2] = 1.0f;
                     splatWeights[3] = 0.0f;
                     splatWeights[4] = 0.0f;
                 }
                 if (diffThreshold / 5 <height && height < 2 * diffThreshold / 5)
                 {
-                    splatWeights[0] = 0.0f;
-                    splatWeights[1] = 1.0f;
+                    splatWeights[0] = 1.0f;
+                    splatWeights[1] = 0.0f;
                     splatWeights[2] = 0.0f;
                     splatWeights[3] = 0.0f;
                     splatWeights[4] = 0.0f;
@@ -284,8 +286,8 @@ public class MapDeepToTerrain : MonoBehaviour {
                 if (2 * diffThreshold / 5 < height && height < 3 * diffThreshold / 5)
                 {
                     splatWeights[0] = 0.0f;
-                    splatWeights[1] = 0.0f;
-                    splatWeights[2] = 1.0f;
+                    splatWeights[1] = 1.0f;
+                    splatWeights[2] = 0.0f;
                     splatWeights[3] = 0.0f;
                     splatWeights[4] = 0.0f;
                 }
