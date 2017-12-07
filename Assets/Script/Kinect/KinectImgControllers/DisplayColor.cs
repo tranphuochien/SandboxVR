@@ -1,5 +1,8 @@
 using UnityEngine;
 using System.Collections;
+using System.Drawing;
+
+
 
 [RequireComponent(typeof(Renderer))]
 public class DisplayColor : MonoBehaviour {
@@ -8,6 +11,7 @@ public class DisplayColor : MonoBehaviour {
 	private Kinect.KinectInterface kinect;
 	
 	private Texture2D tex;
+    private bool shouldWrite = true;
 	
 	// Use this for initialization
 	void Start () {
@@ -23,12 +27,46 @@ public class DisplayColor : MonoBehaviour {
 		if (kinect.pollColor())
 		{
 			//tex.SetPixels32(kinect.getColor());
+            if (shouldWrite)
+            {
+                shouldWrite = false;
+                writePicture(mipmapImg(kinect.getColor(), 640, 480));
+            }
 			tex.SetPixels32(mipmapImg(kinect.getColor(),640,480));
+        
 			tex.Apply(false);
 		}
 	}
-	
-	private Color32[] mipmapImg(Color32[] src, int width, int height)
+
+    void writePicture(Color32[] src)
+    {
+        //wid: 320
+        Bitmap bmp = new Bitmap(240, 240);
+        int idx = 0;
+        for (int y = 0; y < 240; y++)
+        {
+            for (int x = 0; x < 240; x++)
+            {
+
+                System.Drawing.Color color = System.Drawing.Color.FromArgb(src[idx].r, src[idx].g, src[idx].b);
+                bmp.SetPixel(x, y, color);
+
+                idx++;
+            }
+            idx += 80;
+        }
+
+        using (Bitmap b = bmp)
+        {
+            //using (System.Drawing.Graphics g = System.Drawing.Graphics.FromImage(b))
+            //{
+            //    g.Clear(System.Drawing.Color.Green);
+            //}
+            b.Save(@"E:\green.png", System.Drawing.Imaging.ImageFormat.Png);
+        }
+    }
+
+    private Color32[] mipmapImg(Color32[] src, int width, int height)
 	{
 		int newWidth = width / 2;
 		int newHeight = height / 2;
