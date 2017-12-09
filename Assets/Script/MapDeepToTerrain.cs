@@ -5,6 +5,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Collections;
 using Firebase.Storage;
+using System.Drawing;
 
 public class MapDeepToTerrain : MonoBehaviour {
     private int HEIGHT_KINECT = 240;
@@ -36,24 +37,8 @@ public class MapDeepToTerrain : MonoBehaviour {
     private static bool isRaining;
     private const int DRAINAGE_INTERVAL = 20;
     private static int mDrainageCount = 0;
+    
 
-    IEnumerator uploadFile(StorageReference rivers_ref)
-    {
-        // File located on disk
-        string local_file = "E://green.png";
-        var task = rivers_ref.PutFileAsync(local_file);
-        yield return new WaitUntil(() => task.IsCompleted);
-        if (task.IsFaulted)
-        {
-            Debug.Log(task.Exception.ToString());
-            throw task.Exception;
-        }
-        else
-        {
-            Debug.Log("Finished uploading... Download Url: " + task.Result.DownloadUrl.ToString());
-            Debug.Log("Press the Download button to download text from Cloud Storage");
-        }
-    }
 
     // Use this for initialization
     void Start() {
@@ -62,20 +47,6 @@ public class MapDeepToTerrain : MonoBehaviour {
         mRain = this.gameObject.transform.GetChild(0).gameObject;
         mWater = this.gameObject.transform.GetChild(1).gameObject;
 
-        // Get a reference to the storage service, using the default Firebase App
-        FirebaseStorage storage = Firebase.Storage.FirebaseStorage.DefaultInstance;
-
-        // Create a storage reference from our storage service
-        StorageReference storage_ref =
-          storage.GetReferenceFromUrl("gs://sandboxvr-40119.appspot.com");
-
-
-        // Create a reference to the file you want to upload
-        StorageReference rivers_ref = storage_ref.Child("images//green.png");
-
-        Debug.Log(rivers_ref.ToString());
-
-        StartCoroutine(uploadFile(rivers_ref));
     }
 
     // Update is called once per frame
@@ -427,6 +398,5 @@ public class MapDeepToTerrain : MonoBehaviour {
         //}
         return new KeyValuePair<int, int>(min, max) ;
     }
-
 }
 
