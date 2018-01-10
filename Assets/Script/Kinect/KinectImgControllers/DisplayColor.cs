@@ -68,12 +68,16 @@ public class DisplayColor : MonoBehaviour {
 		if (kinect.pollColor())
 		{
 			//tex.SetPixels32(kinect.getColor());
+
+            /*streaming image to server */
+
+            /*
             if (countFrameCapture == 0)
             {
                 writePicture(mipmapImg(kinect.getColor(), 640, 480));
             }
             countFrameCapture = (countFrameCapture + 1) % SKIP_FRAMES_CAPTURE;
-           
+            */
             tex.SetPixels32(mipmapImg(kinect.getColor(),640,480));
         
 			tex.Apply(false);

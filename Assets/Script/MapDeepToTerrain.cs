@@ -47,6 +47,7 @@ public class MapDeepToTerrain : MonoBehaviour {
         mRain = this.gameObject.transform.GetChild(0).gameObject;
         mWater = this.gameObject.transform.GetChild(1).gameObject;
 
+        //renderTree(GetComponent<Terrain>().terrainData);
     }
 
     // Update is called once per frame
@@ -88,6 +89,7 @@ public class MapDeepToTerrain : MonoBehaviour {
             loadDeep(GetComponent<Terrain>().terrainData, DepthImage);
 
             //WriteTerrainHeightMap();
+            //renderTree(GetComponent<Terrain>().terrainData);
         }
     }
 
@@ -255,7 +257,7 @@ public class MapDeepToTerrain : MonoBehaviour {
             diffThreshold = threshold.Value - threshold.Key;
             currentMax = threshold.Value;
         }
-        Debug.Log("min: " + threshold.Key + "max: " + threshold.Value);
+        //Debug.Log("min: " + threshold.Key + "max: " + threshold.Value);
         
         float[,,] splatmapData = new float[terrainData.alphamapWidth, terrainData.alphamapHeight, terrainData.alphamapLayers];
 
@@ -272,46 +274,7 @@ public class MapDeepToTerrain : MonoBehaviour {
                 // Setup an array to record the mix of texture weights at this point
                 float[] splatWeights = new float[terrainData.alphamapLayers];
 
-                if (height < diffThreshold / 5)
-                {
-                    splatWeights[0] = 0.0f;
-                    splatWeights[1] = 0.0f;
-                    splatWeights[2] = 1.0f;
-                    splatWeights[3] = 0.0f;
-                    splatWeights[4] = 0.0f;
-                }
-                if (diffThreshold / 5 <height && height < 2 * diffThreshold / 5)
-                {
-                    splatWeights[0] = 1.0f;
-                    splatWeights[1] = 0.0f;
-                    splatWeights[2] = 0.0f;
-                    splatWeights[3] = 0.0f;
-                    splatWeights[4] = 0.0f;
-                }
-                if (2 * diffThreshold / 5 < height && height < 3 * diffThreshold / 5)
-                {
-                    splatWeights[0] = 0.0f;
-                    splatWeights[1] = 1.0f;
-                    splatWeights[2] = 0.0f;
-                    splatWeights[3] = 0.0f;
-                    splatWeights[4] = 0.0f;
-                }
-                if (3 * diffThreshold / 5 < height && height < 4 * diffThreshold / 5)
-                {
-                    splatWeights[0] = 0.0f;
-                    splatWeights[1] = 0.0f;
-                    splatWeights[2] = 0.0f;
-                    splatWeights[3] = 1.0f;
-                    splatWeights[4] = 0.0f;
-                }
-                if (4*diffThreshold / 5 < height)
-                {
-                    splatWeights[0] = 0.0f;
-                    splatWeights[1] = 0.0f;
-                    splatWeights[2] = 0.0f;
-                    splatWeights[3] = 0.0f;
-                    splatWeights[4] = 1.0f;
-                }
+                handleSetWeights(height, diffThreshold, 5, splatWeights);
 
                 // Sum of all textures weights must add to 1, so calculate normalization factor from sum of weights
                 float z = splatWeights.Sum();
@@ -332,6 +295,30 @@ public class MapDeepToTerrain : MonoBehaviour {
         // Finally assign the new splatmap to the terrainData:
         terrainData.SetAlphamaps(0, 0, splatmapData);
     }
+
+    private float[] handleSetWeights(double height, double diffThreshold, int nLayers, float[] splatWeights)
+    {
+        double a = height * 1.0f / (diffThreshold / 5.0f);
+     
+        for ( int i = nLayers - 1; i >= 0; i--)
+        {
+            if (a >= i * 1.0f)
+            {
+                if (i != 0)
+                {
+                    double tmp = a - i * 1.0f;
+                    splatWeights[i] = (float)tmp;
+                    splatWeights[i - 1] = (float)(1.0 - tmp);
+                }
+                else
+                {
+                    splatWeights[i] = 1.0f;
+                }
+                break;
+            }
+        }
+        return splatWeights;
+    } 
 
     void WriteTerrainHeightMap(TerrainData terrainData)
     {
@@ -397,6 +384,43 @@ public class MapDeepToTerrain : MonoBehaviour {
         //    sw.Close();
         //}
         return new KeyValuePair<int, int>(min, max) ;
+    }
+
+    private void renderTree(TerrainData terrainData)
+    {
+        List<TreeInstance> treeList = new List<TreeInstance>(0);
+
+        int placedTrees = 0;
+
+        for (int i = 0; i < terrainData.heightmapHeight/10; i++)
+        {
+            for (int j = 0; j < terrainData.heightmapWidth/10; j++)
+            {
+                float percent = UnityEngine.Random.value;
+                if (percent > 0.99f)
+                {
+                    placedTrees++;
+                  
+                    //Vector3 treePos = new Vector3(0.0f + placedTrees / terrainData.heightmapWidth, 0.0f, 0.0f + placedTrees / terrainData.heightmapHeight);
+                    Vector3 treePos = new Vector3(percent , 0.0f, percent);
+                    TreeInstance tree = new TreeInstance();
+                 
+                    tree.position = treePos;
+                    tree.prototypeIndex = 0;
+                    tree.color = new UnityEngine.Color(1, 1, 1);
+                    tree.lightmapColor = new UnityEngine.Color(1, 1, 1);
+                    tree.heightScale = 1;
+                    tree.widthScale = 1;
+
+                    treeList.Add(tree);
+                }
+            }
+        }
+        //run after the loop
+        Debug.Log("trees placed: " + placedTrees);
+        Debug.Log("tree array size: " + treeList.Count);
+        terrainData.treeInstances = treeList.ToArray();
+        terrainData.SetHeights(0, 0, new float[,] { { } });
     }
 }
 
