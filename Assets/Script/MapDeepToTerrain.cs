@@ -37,8 +37,11 @@ public class MapDeepToTerrain : MonoBehaviour {
     private static bool isRaining;
     private const int DRAINAGE_INTERVAL = 20;
     private static int mDrainageCount = 0;
-    
-
+    private static int oldMax = 0;
+    private static int oldMin = 0;
+    private static bool isChanged = false;
+    private static List<TreeInstance> treeList = new List<TreeInstance>(0);
+    private static int placedTrees = 0;
 
     // Use this for initialization
     void Start() {
@@ -47,7 +50,7 @@ public class MapDeepToTerrain : MonoBehaviour {
         mRain = this.gameObject.transform.GetChild(0).gameObject;
         mWater = this.gameObject.transform.GetChild(1).gameObject;
 
-        //renderTree(GetComponent<Terrain>().terrainData);
+        //renderTree(GetComponent<Terrain>().terrainData);  
     }
 
     // Update is called once per frame
@@ -237,6 +240,7 @@ public class MapDeepToTerrain : MonoBehaviour {
     private void mapColor(TerrainData terrainData, KeyValuePair<int, int> threshold)
     {
         int diffThreshold;
+        
 
         if (currentMax != 0)
         {
@@ -258,6 +262,20 @@ public class MapDeepToTerrain : MonoBehaviour {
             currentMax = threshold.Value;
         }
         //Debug.Log("min: " + threshold.Key + "max: " + threshold.Value);
+
+        if (oldMax != threshold.Value && oldMin != threshold.Key)
+        {
+            isChanged = true;
+            oldMax = threshold.Value;
+            oldMin = threshold.Key;
+            if (treeList != null && treeList.Count != 0)
+            {
+                deleteAllTree();
+            }
+        } else
+        {
+            isChanged = false;
+        }
         
         float[,,] splatmapData = new float[terrainData.alphamapWidth, terrainData.alphamapHeight, terrainData.alphamapLayers];
 
@@ -274,7 +292,7 @@ public class MapDeepToTerrain : MonoBehaviour {
                 // Setup an array to record the mix of texture weights at this point
                 float[] splatWeights = new float[terrainData.alphamapLayers];
 
-                handleSetWeights(height, diffThreshold, 5, splatWeights);
+                handleSetWeights(height, diffThreshold, 5, splatWeights, placedTrees, treeList, x, y, terrainData.heightmapHeight, terrainData.heightmapWidth);
 
                 // Sum of all textures weights must add to 1, so calculate normalization factor from sum of weights
                 float z = splatWeights.Sum();
@@ -282,7 +300,6 @@ public class MapDeepToTerrain : MonoBehaviour {
                 // Loop through each terrain texture
                 for (int i = 0; i < terrainData.alphamapLayers; i++)
                 {
-
                     // Normalize so that sum of all texture weights = 1
                     splatWeights[i] /= z;
 
@@ -294,9 +311,10 @@ public class MapDeepToTerrain : MonoBehaviour {
 
         // Finally assign the new splatmap to the terrainData:
         terrainData.SetAlphamaps(0, 0, splatmapData);
+        terrainData.treeInstances = treeList.ToArray();
     }
 
-    private float[] handleSetWeights(double height, double diffThreshold, int nLayers, float[] splatWeights)
+    private float[] handleSetWeights(double height, double diffThreshold, int nLayers, float[] splatWeights, int placedTrees, List<TreeInstance> treeList, int x, int y, int mapHeight, int mapWidth)
     {
         double a = height * 1.0f / (diffThreshold / 5.0f);
      
@@ -309,6 +327,10 @@ public class MapDeepToTerrain : MonoBehaviour {
                     double tmp = a - i * 1.0f;
                     splatWeights[i] = (float)tmp;
                     splatWeights[i - 1] = (float)(1.0 - tmp);
+                    if (i == 2 && isChanged)
+                    {
+                        addTree(placedTrees, treeList, x, y, mapHeight, mapWidth);
+                    }
                 }
                 else
                 {
@@ -386,6 +408,13 @@ public class MapDeepToTerrain : MonoBehaviour {
         return new KeyValuePair<int, int>(min, max) ;
     }
 
+    private void deleteAllTree()
+    {
+        List<TreeInstance> newTrees = new List<TreeInstance>(0);
+        placedTrees = 0;
+        GetComponent<Terrain>().terrainData.treeInstances = newTrees.ToArray();
+    }
+
     private void renderTree(TerrainData terrainData)
     {
         List<TreeInstance> treeList = new List<TreeInstance>(0);
@@ -421,6 +450,30 @@ public class MapDeepToTerrain : MonoBehaviour {
         Debug.Log("tree array size: " + treeList.Count);
         terrainData.treeInstances = treeList.ToArray();
         terrainData.SetHeights(0, 0, new float[,] { { } });
+    }
+
+    private List<TreeInstance> addTree(int placedTrees, List<TreeInstance> treeList, int x, int y, int mapHeight, int mapWidth)
+    {
+        float percent = UnityEngine.Random.value;
+        if (percent > 0.99f)
+        {
+            placedTrees++;
+
+            //Vector3 treePos = new Vector3(0.0f + placedTrees / terrainData.heightmapWidth, 0.0f, 0.0f + placedTrees / terrainData.heightmapHeight);
+            Vector3 treePos = new Vector3(x * 1.0f / mapWidth, 0.0f, y * 1.0f / mapHeight);
+            TreeInstance tree = new TreeInstance();
+
+            tree.position = treePos;
+            tree.prototypeIndex = 0;
+            tree.color = new UnityEngine.Color(1, 1, 1);
+            tree.lightmapColor = new UnityEngine.Color(1, 1, 1);
+            tree.heightScale = 1;
+            tree.widthScale = 1;
+
+            treeList.Add(tree);
+        }
+
+        return treeList;
     }
 }
 
