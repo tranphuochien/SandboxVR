@@ -90,7 +90,8 @@ public class MapDeepToTerrain : MonoBehaviour {
             //loadDeep(GetComponent<Terrain>().terrainData, result, false);
         
             loadDeep(GetComponent<Terrain>().terrainData, DepthImage);
-
+            Debug.Log("height: " + GetComponent<Terrain>().terrainData.alphamapHeight);
+            Debug.Log("width: " + GetComponent<Terrain>().terrainData.alphamapWidth);
             //WriteTerrainHeightMap();
             //renderTree(GetComponent<Terrain>().terrainData);
         }
@@ -261,9 +262,9 @@ public class MapDeepToTerrain : MonoBehaviour {
             diffThreshold = threshold.Value - threshold.Key;
             currentMax = threshold.Value;
         }
-        //Debug.Log("min: " + threshold.Key + "max: " + threshold.Value);
+        Debug.Log("min: " + threshold.Key + "max: " + threshold.Value);
 
-        if (oldMax != threshold.Value && oldMin != threshold.Key)
+        if (oldMax != threshold.Value || oldMin != threshold.Key)
         {
             isChanged = true;
             oldMax = threshold.Value;
@@ -312,6 +313,7 @@ public class MapDeepToTerrain : MonoBehaviour {
         // Finally assign the new splatmap to the terrainData:
         terrainData.SetAlphamaps(0, 0, splatmapData);
         terrainData.treeInstances = treeList.ToArray();
+        terrainData.SetHeights(0, 0, new float[,] { { } });
     }
 
     private float[] handleSetWeights(double height, double diffThreshold, int nLayers, float[] splatWeights, int placedTrees, List<TreeInstance> treeList, int x, int y, int mapHeight, int mapWidth)
@@ -327,7 +329,7 @@ public class MapDeepToTerrain : MonoBehaviour {
                     double tmp = a - i * 1.0f;
                     splatWeights[i] = (float)tmp;
                     splatWeights[i - 1] = (float)(1.0 - tmp);
-                    if (i == 2 && isChanged)
+                    if (i == 2 && splatWeights[i] > 0.89 && isChanged)
                     {
                         addTree(placedTrees, treeList, x, y, mapHeight, mapWidth);
                     }
@@ -458,9 +460,14 @@ public class MapDeepToTerrain : MonoBehaviour {
         if (percent > 0.99f)
         {
             placedTrees++;
+            float x1 = x * 1.0f / mapWidth;
+            float y1 = y * 1.0f / mapHeight;
+            float x3 = y1;
+            float y3 = x1;
 
             //Vector3 treePos = new Vector3(0.0f + placedTrees / terrainData.heightmapWidth, 0.0f, 0.0f + placedTrees / terrainData.heightmapHeight);
-            Vector3 treePos = new Vector3(x * 1.0f / mapWidth, 0.0f, y * 1.0f / mapHeight);
+            Vector3 treePos = new Vector3(x3, 0.0f, y3);
+            //Vector3 treePos = new Vector3(x2, 0.0f, y2);
             TreeInstance tree = new TreeInstance();
 
             tree.position = treePos;
